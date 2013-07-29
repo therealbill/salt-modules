@@ -22,6 +22,9 @@ badchars = re.compile(r"""[/;:%^$#@!`'"*()\\]""")
 
 
 def _checkForBadCharacters(cmd):
+    '''
+    Look for characters which can cause problems if allowed to go to a command shell.
+    '''
     for entry in cmd:
         if badchars.search(entry):
             return (True,entry)
@@ -29,16 +32,25 @@ def _checkForBadCharacters(cmd):
 
 
 def _runCommand(cmd):
+    '''
+    Run the given command.
+    '''
     result = subprocess.Popen(cmd,stdout=subprocess.PIPE).communicate()[0]
     return result
 
 
 def getContainerList():
+    '''
+    Retrieve a list of containers present on the LXC Host (minion).
+    '''
     cmd = "/usr/bin/lxc-ls"
     result = _runCommand([cmd])
     return result
 
 def getContainerProcessList(container,psargs=None):
+    '''
+    Retrieve a list of processes currently running on the given container.
+    '''
     if not container in getContainerList():
         return { 'status':'error', 'message':'No such container {}'.format(container) }
     cmd = ["/usr/bin/lxc-ps", "-n", container]
@@ -57,6 +69,9 @@ def getContainerProcessList(container,psargs=None):
     return records
 
 def getAllContainerProcessList(psargs=None):
+    '''
+    Retrieve a list of all processes running in containers on the minion.
+    '''
     cmd = ["/usr/bin/lxc-ps", '--lxc']
     if psargs:
         isBad = _checkForBadCharacters([psargs])
@@ -75,6 +90,9 @@ def getAllContainerProcessList(psargs=None):
     return records
 
 def getContainerInfo(container):
+    '''
+    Retrieve information about the given container.
+    '''
     cmd = ["lxc-info","-n",container]
     result = _runCommand(cmd)
     infodata = {}
@@ -85,6 +103,9 @@ def getContainerInfo(container):
     return infodata
 
 def startContainer(container):
+    '''
+    Start up the given container.
+    '''
     cmd = ["lxc-start","-d","-n",container]
     if container not in getContainerList():
         return { 'status':'error', 'message':'No such container {}'.format(container) }
@@ -95,6 +116,9 @@ def startContainer(container):
     return getContainerInfo(container)
 
 def stopContainer(container):
+    '''
+    Stop the given container, using lxc-stop.
+    '''
     cmd = ["lxc-stop","-n",container]
     if container not in getContainerList():
         return { 'status':'error', 'message':'No such container {}'.format(container) }
@@ -105,6 +129,10 @@ def stopContainer(container):
     return getContainerInfo(container)
 
 def createContainer(name,template,disksize,backingstore="lvm",vgname="containers"):
+    '''
+    Create a container using the given parameters.
+    vgname is only used if backingstore is 'lvm'.
+    '''
     allowed_templates = ('debian-wheezy',)
     vgname = 'containers'
 
@@ -129,6 +157,10 @@ def createContainer(name,template,disksize,backingstore="lvm",vgname="containers
         return (False,results)
 
 def deleteContainer(container,StopIfRunning=False):
+    '''
+    Delete the given container. If StopIfRunning is True it will stop it first (if it is running),
+    otherwise it will return an error if the container is running.
+    '''
     if getContainerInfo(container)['state'] == 'RUNNING':
         if StopIfRunning:
             stopContainer(container)
